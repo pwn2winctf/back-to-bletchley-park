@@ -168,6 +168,7 @@ def caddc(n):
 
 
 def plusone(n):
+    """ Plus 1 """
     add(n)
     with declare('plusone{}'.format(n),
                  '{b},{s}'.format(b=arg_list('b',n),
@@ -180,6 +181,7 @@ def plusone(n):
 
 
 def minusone(n):
+    """ Minus 1 """
     add(n)
     with declare('minusone{}'.format(n),
                  '{b},{s}'.format(b=arg_list('b',n),
@@ -194,6 +196,7 @@ def minusone(n):
 
 
 def sub(n):
+    """ CDKM Subtractor """
     plusone(n)
     add(n)
     minusone(n)
@@ -216,19 +219,44 @@ def sub(n):
             src.append('  x a{};'.format(i))
 
 
+def csub(n):
+    """ Controlled CDKM Subtractor """
+    plusone(n)
+    cadd(n)
+    minusone(n)
+    with declare('csub{}'.format(n),
+                 '{b},{a},x,{s}'.format(b=arg_list('b',n),
+                                        a=arg_list('a',n),
+                                        s=arg_list('s',n+1))) as src:
+        for i in range(n):
+            src.append('  x a{};'.format(i))
+        src.append('  plusone{n} {a},{s};'.format(n=n,
+                                                  a=arg_list('a',n),
+                                                  s=arg_list('s',n+1)))
+        src.append('  cadd{n} {b},s{n},{a},x;'.format(n=n,
+                                                      b=arg_list('b',n),
+                                                      a=arg_list('a',n)))
+        src.append('  minusone{n} {a},{s};'.format(n=n,
+                                                   a=arg_list('a',n),
+                                                   s=arg_list('s',n+1)))
+        for i in range(n-1, -1, -1):
+            src.append('  x a{};'.format(i))
+
+
 def synth():
-    sub(4)
+    csub(4)
     qasm_code.append("""
     qreg b[4];
     qreg a[4];
     qreg scratch[5];
+    qreg ctrl[1];
     creg c[4];
 
-    //x b[0];
-    //x b[1];
+    x b[0];
+    x b[1];
     x a[0];
 
-    sub4 {b},{a},{s};
+    csub4 {b},{a},{s},ctrl[0];
 
     measure b -> c;
     """.format(b=arg_vec('b',4),a=arg_vec('a',4),s=arg_vec('scratch',5),))
