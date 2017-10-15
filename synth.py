@@ -225,7 +225,7 @@ def csub(n):
     cadd(n)
     minusone(n)
     with declare('csub{}'.format(n),
-                 '{b},{a},x,{s}'.format(b=arg_list('b',n),
+                 '{b},{a},{s},x'.format(b=arg_list('b',n),
                                         a=arg_list('a',n),
                                         s=arg_list('s',n+1))) as src:
         for i in range(n):
@@ -243,22 +243,52 @@ def csub(n):
             src.append('  x a{};'.format(i))
 
 
+def cmpge(n):
+    """ Check if a >= b """
+    plusone(n)
+    cmb(n)
+    minusone(n)
+    with declare('cmpge{}'.format(n),
+                 '{b},{a},cout,{s}'.format(b=arg_list('b',n),
+                                           a=arg_list('a',n),
+                                           s=arg_list('s',n+1))) as src:
+        src.append('  plusone{n} {a},{s};'.format(n=n,
+                                                  a=arg_list('a',n),
+                                                  s=arg_list('s',n+1)))
+        for i in range(n):
+            src.append('  x a{};'.format(i))
+        src.append('  plusone{n} {a},{s};'.format(n=n,
+                                                  a=arg_list('a',n),
+                                                  s=arg_list('s',n+1)))
+        src.append('  cmb{n} cout,{b},s{n},{a};'.format(n=n,
+                                                        a=arg_list('a',n),
+                                                        b=arg_list('b',n)))
+        src.append('  minusone{n} {a},{s};'.format(n=n,
+                                                   a=arg_list('a',n),
+                                                   s=arg_list('s',n+1)))
+        for i in range(n-1, -1, -1):
+            src.append('  x a{};'.format(i))
+        src.append('  minusone{n} {a},{s};'.format(n=n,
+                                                   a=arg_list('a',n),
+                                                   s=arg_list('s',n+1)))
+
 def synth():
-    csub(4)
+    cmpge(4)
     qasm_code.append("""
     qreg b[4];
     qreg a[4];
     qreg scratch[5];
-    qreg ctrl[1];
-    creg c[4];
+    qreg cout[1];
+    creg c[1];
 
     x b[0];
-    x b[1];
-    x a[0];
+    //x b[1];
+    //x a[0];
+    //x a[1];
 
-    csub4 {b},{a},{s},ctrl[0];
+    cmpge4 {b},{a},cout[0],{s};
 
-    measure b -> c;
+    measure cout -> c;
     """.format(b=arg_vec('b',4),a=arg_vec('a',4),s=arg_vec('scratch',5),))
     return '\n'.join(qasm_code)
 
