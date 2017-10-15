@@ -278,8 +278,8 @@ def rmod(n):
     csub(n)
     with declare('rmod{}'.format(n),
                  '{b},{a},anc,{s}'.format(b=arg_list('b',n),
-                                           a=arg_list('a',n),
-                                           s=arg_list('s',n+1))) as src:
+                                          a=arg_list('a',n),
+                                          s=arg_list('s',n+1))) as src:
         src.append('  cmpge{n} {b},{a},anc,{s};'.format(n=n,
                                                        a=arg_list('a',n),
                                                        b=arg_list('b',n),
@@ -290,23 +290,48 @@ def rmod(n):
                                                        s=arg_list('s',n+1)))
 
 
-def synth():
-    rmod(4)
-    qasm_code.append("""
-    qreg b[4];
-    qreg a[4];
-    qreg scratch[5];
-    qreg cout[1];
-    creg c[4];
+def addmod(n):
+    add(n)
+    rmod(n)
+    cmb(n)
+    with declare('addmod{}'.format(n),
+                 '{b},{a},{n},{s}'.format(b=arg_list('b',n),
+                                          a=arg_list('a',n),
+                                          n=arg_list('n',n),
+                                          s=arg_list('s',n+2))) as src:
+        src.append('  add{nb} {b},s{nb},{a};'.format(nb=n,
+                                                     b=arg_list('b',n),
+                                                     a=arg_list('a',n)))
+        src.append('  rmod{nb} {n},{b},s{nb1},{s};'.format(nb=n,
+                                                           nb1=n+1,
+                                                           n=arg_list('n',n),
+                                                           b=arg_list('b',n),
+                                                           s=arg_list('s',n+1)))
+        src.append('  cmb{nb} s{nb1},{b},s{nb},{a};'.format(nb=n,
+                                                            nb1=n+1,
+                                                            a=arg_list('a',n),
+                                                            b=arg_list('b',n)))
 
-    x b[2];
+def synth():
+    addmod(3)
+    qasm_code.append("""
+    qreg b[3];
+    qreg a[3];
+    qreg n[3];
+    qreg scratch[5];
+    creg c[3];
+
+    x b[1];
     x a[0];
     x a[1];
 
-    rmod4 {b},{a},cout[0],{s};
+    x n[0];
+    x n[1];
 
-    measure a -> c;
-    """.format(b=arg_vec('b',4),a=arg_vec('a',4),s=arg_vec('scratch',5),))
+    addmod3 {b},{a},{n},{s};
+
+    measure n -> c;
+    """.format(b=arg_vec('b',3),a=arg_vec('a',3),n=arg_vec('n',3),s=arg_vec('scratch',5),))
     return '\n'.join(qasm_code)
 
 
