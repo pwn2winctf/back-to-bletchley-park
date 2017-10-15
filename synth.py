@@ -272,23 +272,40 @@ def cmpge(n):
                                                    a=arg_list('a',n),
                                                    s=arg_list('s',n+1)))
 
+def rmod(n):
+    """ Restricted a mod b """
+    cmpge(n)
+    csub(n)
+    with declare('rmod{}'.format(n),
+                 '{b},{a},anc,{s}'.format(b=arg_list('b',n),
+                                           a=arg_list('a',n),
+                                           s=arg_list('s',n+1))) as src:
+        src.append('  cmpge{n} {b},{a},anc,{s};'.format(n=n,
+                                                       a=arg_list('a',n),
+                                                       b=arg_list('b',n),
+                                                       s=arg_list('s',n+1)))
+        src.append('  csub{n} {a},{b},{s},anc;'.format(n=n,
+                                                       a=arg_list('a',n),
+                                                       b=arg_list('b',n),
+                                                       s=arg_list('s',n+1)))
+
+
 def synth():
-    cmpge(4)
+    rmod(4)
     qasm_code.append("""
     qreg b[4];
     qreg a[4];
     qreg scratch[5];
     qreg cout[1];
-    creg c[1];
+    creg c[4];
 
-    x b[0];
-    //x b[1];
-    //x a[0];
-    //x a[1];
+    x b[2];
+    x a[0];
+    x a[1];
 
-    cmpge4 {b},{a},cout[0],{s};
+    rmod4 {b},{a},cout[0],{s};
 
-    measure cout -> c;
+    measure a -> c;
     """.format(b=arg_vec('b',4),a=arg_vec('a',4),s=arg_vec('scratch',5),))
     return '\n'.join(qasm_code)
 
