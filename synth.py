@@ -167,10 +167,10 @@ def caddc(n):
             src.append('  cus {},b{},a{},x;'.format(cin, i, i))
 
 
-def plusone(n):
-    """ Plus 1 """
+def increment(n):
+    """ Increment """
     add(n)
-    with declare('plusone{}'.format(n),
+    with declare('increment{}'.format(n),
                  '{b},{s}'.format(b=arg_list('b',n),
                                   s=arg_list('s',n+1))) as src:
         src.append('  x s0;')
@@ -180,10 +180,10 @@ def plusone(n):
         src.append('  x s0;')
 
 
-def minusone(n):
-    """ Minus 1 """
+def decrement(n):
+    """ Decrement """
     add(n)
-    with declare('minusone{}'.format(n),
+    with declare('decrement{}'.format(n),
                  '{b},{s}'.format(b=arg_list('b',n),
                                   s=arg_list('s',n+1))) as src:
         for i in range(n):
@@ -197,80 +197,80 @@ def minusone(n):
 
 def sub(n):
     """ CDKM Subtractor """
-    plusone(n)
+    increment(n)
     add(n)
-    minusone(n)
+    decrement(n)
     with declare('sub{}'.format(n),
                  '{b},{a},{s}'.format(b=arg_list('b',n),
                                       a=arg_list('a',n),
                                       s=arg_list('s',n+1))) as src:
         for i in range(n):
             src.append('  x a{};'.format(i))
-        src.append('  plusone{n} {a},{s};'.format(n=n,
-                                                  a=arg_list('a',n),
-                                                  s=arg_list('s',n+1)))
+        src.append('  increment{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
         src.append('  add{n} {b},s{n},{a};'.format(n=n,
                                                    b=arg_list('b',n),
                                                    a=arg_list('a',n)))
-        src.append('  minusone{n} {a},{s};'.format(n=n,
-                                                   a=arg_list('a',n),
-                                                   s=arg_list('s',n+1)))
+        src.append('  decrement{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
         for i in range(n-1, -1, -1):
             src.append('  x a{};'.format(i))
 
 
 def csub(n):
     """ Controlled CDKM Subtractor """
-    plusone(n)
+    increment(n)
     cadd(n)
-    minusone(n)
+    decrement(n)
     with declare('csub{}'.format(n),
                  '{b},{a},{s},x'.format(b=arg_list('b',n),
                                         a=arg_list('a',n),
                                         s=arg_list('s',n+1))) as src:
         for i in range(n):
             src.append('  x a{};'.format(i))
-        src.append('  plusone{n} {a},{s};'.format(n=n,
-                                                  a=arg_list('a',n),
-                                                  s=arg_list('s',n+1)))
+        src.append('  increment{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
         src.append('  cadd{n} {b},s{n},{a},x;'.format(n=n,
                                                       b=arg_list('b',n),
                                                       a=arg_list('a',n)))
-        src.append('  minusone{n} {a},{s};'.format(n=n,
-                                                   a=arg_list('a',n),
-                                                   s=arg_list('s',n+1)))
+        src.append('  decrement{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
         for i in range(n-1, -1, -1):
             src.append('  x a{};'.format(i))
 
 
 def cmpge(n):
     """ Check if a >= b """
-    plusone(n)
+    increment(n)
     cmb(n)
-    minusone(n)
+    decrement(n)
     with declare('cmpge{}'.format(n),
                  '{b},{a},cout,{s}'.format(b=arg_list('b',n),
                                            a=arg_list('a',n),
                                            s=arg_list('s',n+1))) as src:
-        src.append('  plusone{n} {a},{s};'.format(n=n,
-                                                  a=arg_list('a',n),
-                                                  s=arg_list('s',n+1)))
+        src.append('  increment{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
         for i in range(n):
             src.append('  x a{};'.format(i))
-        src.append('  plusone{n} {a},{s};'.format(n=n,
-                                                  a=arg_list('a',n),
-                                                  s=arg_list('s',n+1)))
+        src.append('  increment{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
         src.append('  cmb{n} cout,{b},s{n},{a};'.format(n=n,
                                                         a=arg_list('a',n),
                                                         b=arg_list('b',n)))
-        src.append('  minusone{n} {a},{s};'.format(n=n,
-                                                   a=arg_list('a',n),
-                                                   s=arg_list('s',n+1)))
+        src.append('  decrement{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
         for i in range(n-1, -1, -1):
             src.append('  x a{};'.format(i))
-        src.append('  minusone{n} {a},{s};'.format(n=n,
-                                                   a=arg_list('a',n),
-                                                   s=arg_list('s',n+1)))
+        src.append('  decrement{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
 
 def rmod(n):
     """ Restricted a mod b """
