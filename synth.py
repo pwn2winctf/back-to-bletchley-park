@@ -316,6 +316,32 @@ def addmod(nb):
                                                                        nb)))
 
 
+def caddmod(nb):
+    """ Controlled b = b + a mod n """
+    cadd(nb)
+    rmod(nb)
+    cmb(nb)
+    with declare('caddmod{}'.format(nb),
+                 '{b},{a},{n},{s},x'.format(b=arg_list('b',nb),
+                                            a=arg_list('a',nb),
+                                            n=arg_list('n',nb),
+                                            s=arg_list('s',nb+2))) as src:
+        src.append('  cadd{nb} {b},s{nb},{a},x;'.format(nb=nb,
+                                                        b=arg_list('b',nb),
+                                                        a=arg_list('a',nb)))
+        src.append('  rmod{nb} {n},{b},s{nb1},{s};'.format(nb=nb,
+                                                           nb1=nb+1,
+                                                           n=arg_list('n',nb),
+                                                           b=arg_list('b',nb),
+                                                           s=arg_list('s',
+                                                                      nb+1)))
+        src.append('  cmb{nb} s{nb1},{b},s{nb},{a};'.format(nb=nb,
+                                                            nb1=nb+1,
+                                                            a=arg_list('a',nb),
+                                                            b=arg_list('b',
+                                                                       nb)))
+
+
 def double(n):
     """ a = 2*a  (only works for a[n-1] = |0>) """
     with declare('double{}'.format(n),
