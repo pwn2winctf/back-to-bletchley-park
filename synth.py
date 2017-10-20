@@ -277,17 +277,17 @@ def rmod(n):
     cmpge(n)
     csub(n)
     with declare('rmod{}'.format(n),
-                 '{b},{a},anc,{s}'.format(b=arg_list('b',n),
+                 '{b},{a},g,{s}'.format(b=arg_list('b',n),
                                           a=arg_list('a',n),
                                           s=arg_list('s',n+1))) as src:
-        src.append('  cmpge{n} {b},{a},anc,{s};'.format(n=n,
-                                                       a=arg_list('a',n),
-                                                       b=arg_list('b',n),
-                                                       s=arg_list('s',n+1)))
-        src.append('  csub{n} {a},{b},{s},anc;'.format(n=n,
-                                                       a=arg_list('a',n),
-                                                       b=arg_list('b',n),
-                                                       s=arg_list('s',n+1)))
+        src.append('  cmpge{n} {b},{a},g,{s};'.format(n=n,
+                                                      a=arg_list('a',n),
+                                                      b=arg_list('b',n),
+                                                      s=arg_list('s',n+1)))
+        src.append('  csub{n} {a},{b},{s},g;'.format(n=n,
+                                                     a=arg_list('a',n),
+                                                     b=arg_list('b',n),
+                                                     s=arg_list('s',n+1)))
 
 
 def addmod(nb):
@@ -355,19 +355,44 @@ def doublemod(nb):
     double(nb)
     rmod(nb)
     with declare('doublemod{}'.format(nb),
-                 '{a},{n},anc,{s}'.format(a=arg_list('a',nb),
+                 '{a},{n},g,{s}'.format(a=arg_list('a',nb),
                                           n=arg_list('n',nb),
                                           s=arg_list('s',nb+1))) as src:
         src.append('  double{nb} {a};'.format(nb=nb,
                                               a=arg_list('a',nb)))
-        src.append('  rmod{nb} {n},{a},anc,{s};'.format(nb=nb,
-                                                        a=arg_list('a',nb),
-                                                        n=arg_list('n',nb),
-                                                        s=arg_list('s',nb+1)))
+        src.append('  rmod{nb} {n},{a},g,{s};'.format(nb=nb,
+                                                      a=arg_list('a',nb),
+                                                      n=arg_list('n',nb),
+                                                      s=arg_list('s',nb+1)))
+
+
+def multbstage(nb):
+    """ Basic modular multiplication module stage """
+    doublemod(nb)
+    caddmod(nb)
+    with declare('multbstage{}'.format(nb),
+                 '{s},{a},{n},{z},g,x'.format(s=arg_list('s',nb),
+                                              a=arg_list('a',nb),
+                                              n=arg_list('n',nb),
+                                              z=arg_list('z',nb+2))) as src:
+        src.append('  caddmod{nb} {s},{a},{n},{z},x;'.format(nb=nb,
+                                                             s=arg_list('s',
+                                                                        nb),
+                                                             a=arg_list('a',
+                                                                        nb),
+                                                             n=arg_list('n',
+                                                                        nb),
+                                                             z=arg_list('z',
+                                                                        nb+2)))
+        src.append('  doublemod{nb} {a},{n},g,{z};'.format(nb=nb,
+                                                           a=arg_list('a',nb),
+                                                           n=arg_list('n',nb),
+                                                           z=arg_list('z',
+                                                                      nb+1)))
 
 
 def synth():
-    doublemod(3)
+    multbstage(3)
     qasm_code.append("""
     qreg b[3];
     qreg a[3];
@@ -381,8 +406,6 @@ def synth():
 
     x n[0];
     x n[1];
-
-    doublemod3 {a},{n},{s};
 
     measure a -> c;
     """.format(b=arg_vec('b',3),a=arg_vec('a',3),n=arg_vec('n',3),s=arg_vec('scratch',5),))
