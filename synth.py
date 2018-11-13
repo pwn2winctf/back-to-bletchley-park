@@ -338,8 +338,8 @@ def caddmod(nb):
         src.append('  cmb{nb} s{nb1},{b},s{nb},{a};'.format(nb=nb,
                                                             nb1=nb+1,
                                                             a=arg_list('a',nb),
-                                                            b=arg_list('b',
-                                                                       nb)))
+                                                            b=arg_list('b', nb),
+                                                            ))
 
 
 def double(n):
@@ -347,7 +347,7 @@ def double(n):
     with declare('double{}'.format(n),
                  '{a}'.format(a=arg_list('a',n))) as src:
         for i in range(n-1):
-            src.append('  swap a{}, a{};'.format(i, n-1))
+            src.append('  swap a{},a{};'.format(i, n-1))
 
 
 def doublemod(nb):
@@ -391,24 +391,69 @@ def multbstage(nb):
                                                                       nb+1)))
 
 
-def synth():
-    multbstage(3)
-    qasm_code.append("""
-    qreg b[3];
-    qreg a[3];
-    qreg n[3];
-    qreg scratch[5];
-    creg c[3];
 
-    x b[1];
+
+def multbchain(nb):
+    """ Chains basic modular multiplication stages """
+    multbstage(nb)
+    with declare('multbchain{}'.format(nb),
+                 '{s},{a},{n},{z},ad,{g},{x}'.format(s=arg_list('s',nb),
+                                                  a=arg_list('a',nb),
+                                                  n=arg_list('n',nb),
+                                                  z=arg_list('z',nb+1),
+                                                  g=arg_list('g',nb-1),
+                                                  x=arg_list('x',nb-1))) as src:
+        for i in range(nb-1):
+            src.append( '  multbstage{nb} {s},{a},{n},{z},ad,g{i},x{i};'.format(
+                                                              nb=nb,
+                                                              s=arg_list('s',nb),
+                                                              a=arg_list('a',nb),
+                                                              n=arg_list('n',nb),
+                                                              z=arg_list('z',nb+1),
+                                                              i=i))
+
+
+def synth():
+    nb=3
+    multbchain(nb)
+    qasm_code.append("""
+    qreg b[{nb}];
+    qreg a[{nb}];
+    qreg n[{nb}];
+    qreg scratch[{nb1}];
+
+    // recicled
+    qreg ancilla_adder[1];
+
+    // num is X in the article
+    qreg num[{nb}];
+
+    // one ancilla needed per bit in X
+    qreg trash[{nbm1}];
+
+    creg c[{nb}];
+
+    x num[0];
+    x num[1];
+
     x a[1];
-    //x a[1];
 
     x n[0];
     x n[1];
 
-    measure a -> c;
-    """.format(b=arg_vec('b',3),a=arg_vec('a',3),n=arg_vec('n',3),s=arg_vec('scratch',5),))
+    //multbstage{nb} {b},{a},{n},{s},ancilla_adder[0],trash[0],num[0];
+    multbchain{nb} {b},{a},{n},{s},ancilla_adder[0],{t},{x};
+
+    measure b -> c;
+    """.format(nb=nb,nb1=nb+1,
+               b=arg_vec('b',nb),
+               a=arg_vec('a',nb),
+               n=arg_vec('n',nb),
+               s=arg_vec('scratch',nb+1),
+               t=arg_vec('trash',nb-1),
+               x=arg_vec('num',nb-1),
+               nbm1=nb-1,
+               ))
     return '\n'.join(qasm_code)
 
 
