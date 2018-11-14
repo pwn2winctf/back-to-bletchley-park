@@ -130,7 +130,7 @@ def cmb(n):
         for i in range(n):
             cin = 'cin' if i == 0 else 'a{}'.format(i - 1)
             src.append('  maj {},b{},a{};'.format(cin, i, i))
-        src.append('  cx a{},cout;'.format(n-2))
+        src.append('  cx a{},cout;'.format(n-1))
         for i in range(n-1, -1, -1):
             cin = 'cin' if i == 0 else 'a{}'.format(i - 1)
             src.append('  umj {},b{},a{};'.format(cin, i, i))
@@ -271,6 +271,7 @@ def cmpge(n):
         src.append('  decrement{n} {a},{s};'.format(n=n,
                                                     a=arg_list('a',n),
                                                     s=arg_list('s',n+1)))
+        src.append('  x cout;')
 
 def rmod(n):
     """ Restricted a mod b """
@@ -335,11 +336,17 @@ def caddmod(nb):
                                                            b=arg_list('b',nb),
                                                            s=arg_list('s',
                                                                       nb+1)))
-        src.append('  cmb{nb} s{nb1},{b},s{nb},{a};'.format(nb=nb,
+#        src.append('  cmb{nb} s{nb1},{b},s{nb},{a};'.format(nb=nb,
+#                                                            nb1=nb+1,
+#                                                            a=arg_list('a',nb),
+#                                                            b=arg_list('b', nb),
+#                                                            ))
+        src.append('  cmpge{nb} {b},{a},s{nb1},{s};'.format(nb=nb, 
                                                             nb1=nb+1,
-                                                            a=arg_list('a',nb),
-                                                            b=arg_list('b', nb),
-                                                            ))
+                                                        s=arg_list('s',nb+1),
+                                                        a=arg_list('a',nb),
+                                                        b=arg_list('b',nb),
+                                                        ))
 
 
 def double(n):
