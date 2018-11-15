@@ -70,6 +70,14 @@ def umj():
             '  cx a,b;',
         ])
 
+def cuj():
+    with declare('cuj', 'c,b,a,x') as src:
+        src.extend([
+            '  ccx b,c,a;',
+            '  cx a,c;',
+            '  ccx x,a,b;',
+        ])
+
 
 def cmj():
     with declare('cmj', 'c,b,a,x') as src:
@@ -89,6 +97,10 @@ def cus():
         ])
 
 
+
+
+
+
 def add(n):
     """ CDKM adder without carry output """
     maj()
@@ -102,6 +114,7 @@ def add(n):
         for i in range(n-1, -1, -1):
             cin = 'cin' if i == 0 else 'a{}'.format(i - 1)
             src.append('  ums {},b{},a{};'.format(cin, i, i))
+
 
 
 def addc(n):
@@ -135,6 +148,20 @@ def cmb(n):
             cin = 'cin' if i == 0 else 'a{}'.format(i - 1)
             src.append('  umj {},b{},a{};'.format(cin, i, i))
 
+def ccmb(n):
+    cmj()
+    cuj()
+    """ Comparator base block (just like addc but only changes cout) """
+    with declare('ccmb{}'.format(n),
+                 'cout,{b},cin,{a},x'.format(b=arg_list('b',n),
+                                           a=arg_list('a',n))) as src:
+        for i in range(n):
+            cin = 'cin' if i == 0 else 'a{}'.format(i - 1)
+            src.append('  cmj {},b{},a{},x;'.format(cin, i, i))
+        src.append('  cx a{},cout;'.format(n-1))
+        for i in range(n-1, -1, -1):
+            cin = 'cin' if i == 0 else 'a{}'.format(i - 1)
+            src.append('  cuj {},b{},a{},x;'.format(cin, i, i))
 
 def cadd(n):
     """ Controlled CDKM adder without carry output """
@@ -273,6 +300,78 @@ def cmpge(n):
                                                     s=arg_list('s',n+1)))
         src.append('  x cout;')
 
+def ccmpge(n):
+    """ Check if a >= b """
+    increment(n)
+    ccmb(n)
+    decrement(n)
+    with declare('ccmpge{}'.format(n),
+                 '{b},{a},cout,{s},x'.format(b=arg_list('b',n),
+                                           a=arg_list('a',n),
+                                           s=arg_list('s',n+1))) as src:
+        src.append('  increment{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
+        for i in range(n):
+            src.append('  x a{};'.format(i))
+        src.append('  increment{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
+        src.append('  ccmb{n} cout,{b},s{n},{a},x;'.format(n=n,
+                                                        a=arg_list('a',n),
+                                                        b=arg_list('b',n)))
+        src.append('  decrement{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
+        for i in range(n-1, -1, -1):
+            src.append('  x a{};'.format(i))
+        src.append('  decrement{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
+        src.append('  x cout;')
+
+def ccmpg(n):
+    """ Check if a >= b """
+    increment(n)
+    ccmb(n)
+    decrement(n)
+    with declare('ccmpg{}'.format(n),
+                 '{b},{a},cout,{s},x'.format(b=arg_list('b',n),
+                                           a=arg_list('a',n),
+                                           s=arg_list('s',n+1))) as src:
+        for i in range(n):
+            src.append('  x a{};'.format(i))
+        src.append('  increment{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
+        src.append('  ccmb{n} cout,{b},s{n},{a},x;'.format(n=n,
+                                                        a=arg_list('a',n),
+                                                        b=arg_list('b',n)))
+        src.append('  decrement{n} {a},{s};'.format(n=n,
+                                                    a=arg_list('a',n),
+                                                    s=arg_list('s',n+1)))
+        for i in range(n-1, -1, -1):
+            src.append('  x a{};'.format(i))
+        src.append('  x cout;')
+
+
+def crmod(n):
+    """ Restricted a mod b """
+    ccmpge(n)
+    csub(n)
+    with declare('crmod{}'.format(n),
+                 '{b},{a},g,{s},x'.format(b=arg_list('b',n),
+                                          a=arg_list('a',n),
+                                          s=arg_list('s',n+1))) as src:
+        src.append('  ccmpge{n} {b},{a},g,{s},x;'.format(n=n,
+                                                      a=arg_list('a',n),
+                                                      b=arg_list('b',n),
+                                                      s=arg_list('s',n+1)))
+        src.append('  csub{n} {a},{b},{s},g;'.format(n=n,
+                                                     a=arg_list('a',n),
+                                                     b=arg_list('b',n),
+                                                     s=arg_list('s',n+1)))
+
 def rmod(n):
     """ Restricted a mod b """
     cmpge(n)
@@ -320,8 +419,9 @@ def addmod(nb):
 def caddmod(nb):
     """ Controlled b = b + a mod n """
     cadd(nb)
-    rmod(nb)
+    crmod(nb)
     cmb(nb)
+    ccmpg(nb)
     with declare('caddmod{}'.format(nb),
                  '{b},{a},{n},{s},x'.format(b=arg_list('b',nb),
                                             a=arg_list('a',nb),
@@ -330,18 +430,13 @@ def caddmod(nb):
         src.append('  cadd{nb} {b},s{nb},{a},x;'.format(nb=nb,
                                                         b=arg_list('b',nb),
                                                         a=arg_list('a',nb)))
-        src.append('  rmod{nb} {n},{b},s{nb1},{s};'.format(nb=nb,
+        src.append('  crmod{nb} {n},{b},s{nb1},{s},x;'.format(nb=nb,
                                                            nb1=nb+1,
                                                            n=arg_list('n',nb),
                                                            b=arg_list('b',nb),
                                                            s=arg_list('s',
                                                                       nb+1)))
-#        src.append('  cmb{nb} s{nb1},{b},s{nb},{a};'.format(nb=nb,
-#                                                            nb1=nb+1,
-#                                                            a=arg_list('a',nb),
-#                                                            b=arg_list('b', nb),
-#                                                            ))
-        src.append('  cmpge{nb} {b},{a},s{nb1},{s};'.format(nb=nb, 
+        src.append('  ccmpg{nb} {b},{a},s{nb1},{s},x;'.format(nb=nb, 
                                                             nb1=nb+1,
                                                         s=arg_list('s',nb+1),
                                                         a=arg_list('a',nb),
@@ -399,9 +494,8 @@ def multbstage(nb):
 
 
 
-
 def multbchain(nb):
-    """ Chains basic modular multiplication stages """
+    """ Chains basic modular multiplication stages """ 
     multbstage(nb)
     with declare('multbchain{}'.format(nb),
                  '{s},{a},{n},{z},ad,{g},{x}'.format(s=arg_list('s',nb),
@@ -409,7 +503,7 @@ def multbchain(nb):
                                                   n=arg_list('n',nb),
                                                   z=arg_list('z',nb+1),
                                                   g=arg_list('g',nb-1),
-                                                  x=arg_list('x',nb-1))) as src:
+                                                  x=arg_list('x',nb))) as src:
         for i in range(nb-1):
             src.append( '  multbstage{nb} {s},{a},{n},{z},ad,g{i},x{i};'.format(
                                                               nb=nb,

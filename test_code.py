@@ -183,32 +183,71 @@ class TestDoubleMod(ut.TestCase):
 class TestCAddMod(ut.TestCase):
     def test_all_combs_enabled(self):
         for n in range(3,4):
-            for i,j in [(a,b) for a in range(0,4) for b in range(0,4)]:
+            # b is anything
+            # a will never be zero, or we will have already found a factor of N
+            for i,j in [(b,a) for b in range(0,3) for a in range(1,3)]:
                 if i+j>=2*n:
                     continue
                 list_of_nums = [(i,3),(j,3),(n,3),(0,4),(0,1),(1,1)]
                 func_input = bits_from_nums(*list_of_nums)
                 func_output = cc.caddmod3(*func_input)
                 conv = nums_from_bits(func_output, list_of_nums)
-                print(i,j,conv)
                 self.assertEqual( (i+j) % n,conv[0])
-                #self.assertEqual(0,conv[4])
+                self.assertEqual(0,conv[4])
     def test_all_combs_disabled(self):
         for n in range(3,4):
-            for i,j in [(a,b) for a in range(0,4) for b in range(0,4)]:
+            # a will never be zero
+            for i,j in [(b,a) for b in range(0,3) for a in range(1,3)]:
                 if i+j>=2*n:
                     continue
                 list_of_nums = [(i,3),(j,3),(n,3),(0,4),(0,1),(0,1)]
                 func_input = bits_from_nums(*list_of_nums)
                 func_output = cc.caddmod3(*func_input)
                 conv = nums_from_bits(func_output, list_of_nums)
-                print(i,j,conv)
                 self.assertEqual( i%n, conv[0])
-                #self.assertEqual(0,conv[4])
+                self.assertEqual(0,conv[4])
 
 
+class TestMultBStage(ut.TestCase):
+    def test_all_pairs_enabled(self):
+        n=3
+        for i,j in [(b,a) for b in range(0,3) for a in range(1,3)]:
+            list_of_nums = [(i,3),(j,3),(n,3),(0,5),(0,1),(1,1)]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = cc.multbstage3(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual( (i+j) % n,conv[0])
+            self.assertEqual( (2*j) % n,conv[1])
+            self.assertEqual( n, conv[2])
+            self.assertEqual( 0, conv[3])
+            self.assertEqual( 1, conv[5])
+    def test_all_pairs_enabled(self):
+        n=3
+        for i,j in [(b,a) for b in range(0,3) for a in range(1,3)]:
+            list_of_nums = [(i,3),(j,3),(n,3),(0,5),(0,1),(0,1)]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = cc.multbstage3(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual( (i) % n,conv[0])
+            self.assertEqual( (2*j) % n,conv[1])
+            self.assertEqual( n, conv[2])
+            self.assertEqual( 0, conv[3])
+            self.assertEqual( 0, conv[5])
 
 
+class TestMultBChain(ut.TestCase):
+    def test_all_vals(self):
+        n=3
+        for a,val in [(i,j) for i in range(1,n) for j in range(0,n)]:
+            list_of_nums = [(0,3),(a,3),(n,3),(0,5),(0,2),(val,3)]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = cc.multbchain3(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual( (a*val) % n,conv[0])
+            self.assertEqual( (a*2**4) % n,conv[1])
+            self.assertEqual( n, conv[2])
+            self.assertEqual( 0, conv[3])
+            self.assertEqual( val, conv[5])
 
 if __name__=='__main__':
     ut.main()
