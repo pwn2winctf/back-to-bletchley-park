@@ -239,12 +239,18 @@ class TestMultBChain(ut.TestCase):
     def test_all_vals(self):
         n=3
         for a,val in [(i,j) for i in range(1,n) for j in range(0,n)]:
-            list_of_nums = [(0,3),(a,3),(n,3),(0,5),(0,2),(val,3)]
+            list_of_nums = [(0,3),(a,3),(n,3),(0,5),(0,3),(val,3)]
             func_input = bits_from_nums(*list_of_nums)
             func_output = cc.multbchain3(*func_input)
             conv = nums_from_bits(func_output, list_of_nums)
+            #print("\na={a}, X={val}, N={n}".format(a=a,val=val,n=n))
+            #print("a", (a*val)%n, conv[0])
+            #print("b", (a*2**3)%n, conv[1])
+            #print("N", n, conv[2])
+            #print("0", 0, conv[3])
+            #print("X", val, conv[5])
             self.assertEqual( (a*val) % n,conv[0])
-            self.assertEqual( (a*2**4) % n,conv[1])
+            self.assertEqual( (a*2**3) % n,conv[1])
             self.assertEqual( n, conv[2])
             self.assertEqual( 0, conv[3])
             self.assertEqual( val, conv[5])

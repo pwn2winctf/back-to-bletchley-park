@@ -502,9 +502,9 @@ def multbchain(nb):
                                                   a=arg_list('a',nb),
                                                   n=arg_list('n',nb),
                                                   z=arg_list('z',nb+1),
-                                                  g=arg_list('g',nb-1),
+                                                  g=arg_list('g',nb),
                                                   x=arg_list('x',nb))) as src:
-        for i in range(nb-1):
+        for i in range(nb):
             src.append( '  multbstage{nb} {s},{a},{n},{z},ad,g{i},x{i};'.format(
                                                               nb=nb,
                                                               s=arg_list('s',nb),
