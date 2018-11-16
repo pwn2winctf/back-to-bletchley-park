@@ -1,3 +1,5 @@
+import sys
+
 qasm_code = ["""
 include "qelib1.inc";
 """]
@@ -514,8 +516,7 @@ def multbchain(nb):
                                                               i=i))
 
 
-def synth():
-    nb=3
+def synth(nb):
     multbchain(nb)
     qasm_code.append("""
     qreg b[{nb}];
@@ -559,5 +560,6 @@ def synth():
 
 
 if __name__ == '__main__':
+    nb = int(sys.argv[1])
     with open('circuit.qasm', 'w') as f:
-        f.write(synth())
+        f.write(synth(nb))
