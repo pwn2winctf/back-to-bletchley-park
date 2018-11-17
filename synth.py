@@ -760,6 +760,18 @@ def modularexp(nb,A,N):
     x = 1
     o = 1
     '''
+    #For whatever reason this function is getting duplicated
+    #AdHoc solution
+    A_aux = A
+    A_set = set()
+    for i in range(nb):
+        if A_aux in A_set:
+            A_aux = (A_aux*A_aux)%N
+            continue
+        A_set.add(A_aux)
+        squareA(nb,A_aux,N)
+        A_aux = (A_aux*A_aux)%N
+
     with declare('modularexp{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
                  '{s},{a},{n},{z},ad,md,{x},{o},{y}'.format(s=arg_list('s',nb),
                                                      a=arg_list('a',nb),
@@ -781,8 +793,7 @@ def modularexp(nb,A,N):
                                                                              x=arg_list('x',nb),
                                                                              o=arg_list('o',nb),
                                                                              i=i))
-            squareA(nb,A,N)
-            src.append(' squareA{nb}_{A}_{N} {a};'.format(nb=nb,
+            src.append('  squareA{nb}_{A}_{N} {a};'.format(nb=nb,
                                                           A=A,
                                                           N=N,
                                                           a=arg_list('a',nb)))
