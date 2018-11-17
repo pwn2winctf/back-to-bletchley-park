@@ -1,0 +1,16 @@
+Run synth with parameters to generate circuit.qasm
+E.G.
+
+python synth.py -nb 5 -N 14 -A 9
+
+This creates a circuit capable of calculating A^y % N using quantum registers
+of nb qubits.
+
+To create the classical counterpart of this circuit run parser_qasm.py
+E.G.
+
+python parser_qasm.py circuit.qasm
+
+To test the (classical) circuit run the test suite
+
+python test_code.py
