@@ -7,8 +7,10 @@ import numpy as np
 with open("classical_code.py") as f:
     for a in f:
         if a.startswith('def double'):
-            break
-    NUM_BITS = int(a.split('(')[0][-1])
+            NUM_BITS = int(a.split('(')[0][-1])
+        if a.startswith('def specificmultbchain'):
+            aux = a.split('(')[0].split('_')
+            CONST_A,CONST_N = int(aux[1]),int(aux[2])
 
 def convert_to_bits(num,nbits):
     return [ (num//2**i) % 2 for i in range(nbits)]
@@ -29,6 +31,20 @@ def bits_from_nums(*kwargs):
         a.extend(convert_to_bits(num,nbits))
     return a
 
+
+def modular_inverse(a,b):
+    s = 0
+    old_s = 1
+    t = 1
+    old_t = 1
+    r = b
+    old_r = a
+    while r!=0:
+        q = old_r//r
+        old_r,r = r,old_r-q*r
+        old_t,t = t,old_t-q*t
+        old_s,s = s,old_s-q*s
+    return old_s%b
 
 class TestAdd(ut.TestCase):
     def test_with_overflow(self):
@@ -249,23 +265,103 @@ class TestMultBStage(ut.TestCase):
 
 class TestMultBChain(ut.TestCase):
     def test_all_vals(self):
-        n=3
-        for a,val in [(i,j) for i in range(1,n) for j in range(0,n)]:
-            list_of_nums = [(0,NUM_BITS),(a,NUM_BITS),(n,NUM_BITS),(0,NUM_BITS+2),(0,NUM_BITS),(val,NUM_BITS)]
+        for n in range(3,2**(NUM_BITS-1)):
+            if n%2 == 0:
+                continue
+            for a,val in [(i,j) for i in range(1,n) for j in range(0,n)]:
+                list_of_nums = [(0,NUM_BITS),(a,NUM_BITS),(n,NUM_BITS),(0,NUM_BITS+2),(0,NUM_BITS),(val,NUM_BITS)]
+                func_input = bits_from_nums(*list_of_nums)
+                func_output = getattr(cc,"multbchain{}".format(NUM_BITS))(*func_input)
+                conv = nums_from_bits(func_output, list_of_nums)
+                self.assertEqual( (a*val) % n,conv[0])
+                self.assertEqual( (a*2**NUM_BITS) % n,conv[1])
+                self.assertEqual( n, conv[2])
+                self.assertEqual( 0, conv[3])
+                self.assertEqual( val, conv[5])
+
+class TestSpecificMultBChain(ut.TestCase):
+    def test_all_x(self):
+        for val in range(CONST_N):
+            list_of_nums = [(0,NUM_BITS),
+                            (CONST_A,NUM_BITS),
+                            (CONST_N,NUM_BITS),
+                            (0,NUM_BITS+3),
+                            (val,NUM_BITS),
+                           ]
             func_input = bits_from_nums(*list_of_nums)
-            func_output = getattr(cc,"multbchain{}".format(NUM_BITS))(*func_input)
+            func_output = getattr(cc,"specificmultbchain{nb}_{A}_{N}".format(
+                                    nb=NUM_BITS,
+                                    A=CONST_A,N=CONST_N)
+                                    )(*func_input)
             conv = nums_from_bits(func_output, list_of_nums)
-            #print("\na={a}, X={val}, N={n}".format(a=a,val=val,n=n))
-            #print("a", (a*val)%n, conv[0])
-            #print("b", (a*2**3)%n, conv[1])
-            #print("N", n, conv[2])
-            #print("0", 0, conv[3])
-            #print("X", val, conv[5])
-            self.assertEqual( (a*val) % n,conv[0])
-            self.assertEqual( (a*2**NUM_BITS) % n,conv[1])
-            self.assertEqual( n, conv[2])
+            self.assertEqual( (CONST_A*val) % CONST_N,conv[0])
+            self.assertEqual( (CONST_A*2**NUM_BITS) % CONST_N,conv[1])
+            self.assertEqual( CONST_N, conv[2])
             self.assertEqual( 0, conv[3])
-            self.assertEqual( val, conv[5])
+            self.assertEqual( val, conv[4])
+    def test_all_x_inv(self):
+        A_inv = modular_inverse(CONST_A,CONST_N)
+        for val in range(CONST_N):
+            list_of_nums = [(0,NUM_BITS),
+                            (A_inv,NUM_BITS),
+                            (CONST_N,NUM_BITS),
+                            (0,NUM_BITS+3),
+                            (val,NUM_BITS),
+                           ]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = getattr(cc,"specificmultbchain{nb}_{A_inv}_{N}".format(
+                                    nb=NUM_BITS,
+                                    A_inv=A_inv,N=CONST_N)
+                                    )(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual( (A_inv*val) % CONST_N,conv[0])
+            self.assertEqual( (A_inv*2**NUM_BITS) % CONST_N,conv[1])
+            self.assertEqual( CONST_N, conv[2])
+            self.assertEqual( 0, conv[3])
+            self.assertEqual( val, conv[4])
+
+class TestToFromModularInverse(ut.TestCase):
+    def test_to_modular_inverse(self):
+        A_inv = modular_inverse(CONST_A,CONST_N)
+        list_of_nums=[( (CONST_A * 2**NUM_BITS) % CONST_N, NUM_BITS)]
+        func_input = bits_from_nums(*list_of_nums)
+        func_output = getattr(cc,"toAmodularinv{nb}_{A}_{N}".format(
+                                nb=NUM_BITS,
+                                A=CONST_A,N=CONST_N)
+                                )(*func_input)
+
+        conv = nums_from_bits(func_output, list_of_nums)
+        self.assertEqual( A_inv, conv[0])
+
+    def test_from_modular_inverse(self):
+        A_inv = modular_inverse(CONST_A,CONST_N)
+        list_of_nums=[( (A_inv * 2**NUM_BITS) % CONST_N, NUM_BITS)]
+        func_input = bits_from_nums(*list_of_nums)
+        func_output = getattr(cc,"backtoA{nb}_{A}_{N}".format(
+                                nb=NUM_BITS,
+                                A=CONST_A,N=CONST_N)
+                                )(*func_input)
+        conv = nums_from_bits(func_output, list_of_nums)
+        self.assertEqual( CONST_A, conv[0])
+
+class TestModularMult(ut.TestCase):
+    def test_all_vals(self):
+        A_inv = modular_inverse(CONST_A,CONST_N)
+        for x in range(1,2**(NUM_BITS-1)-1):
+            list_of_nums=[(0,NUM_BITS),(CONST_A,NUM_BITS),(CONST_N,NUM_BITS),(0,NUM_BITS+3),(x,NUM_BITS)]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = getattr(cc,"modularmult{nb}_{A}_{N}".format(
+                                    nb=NUM_BITS,
+                                    A=CONST_A,N=CONST_N)
+                                    )(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual(0,conv[0])
+            self.assertEqual(CONST_A,conv[1])
+            self.assertEqual(CONST_N,conv[2])
+            self.assertEqual(0,conv[3])
+            self.assertEqual((CONST_A*x)%CONST_N,conv[4])
+            #self.assertEqual( CONST_A, conv[0])
+
 
 if __name__=='__main__':
     ut.main()

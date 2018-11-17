@@ -26,6 +26,8 @@ for line in f:
         ret_vals = tok[2]
         code.extend(['def ' + tok[1] + '(' + tok[2] + '):'])
         l = f.readline().strip().split(' ')
+        if l[0]=='}':
+            code.extend([indentation+'return ' + ret_vals +'\n'])
         while l[0] != '}':
             func = l[0]
             if func == 'x':

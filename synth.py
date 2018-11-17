@@ -1,4 +1,5 @@
 import sys
+import argparse
 
 qasm_code = ["""
 include "qelib1.inc";
@@ -6,6 +7,8 @@ include "qelib1.inc";
 
 
 gates_declared = set()
+
+
 
 
 class declare:
@@ -516,8 +519,108 @@ def multbchain(nb):
                                                               i=i))
 
 
-def synth(nb):
+
+def specificmultbchain(nb,A,N):
+    multbstage(nb)
+    with declare('specificmultbchain{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                 '{s},{a},{n},{z},ad,md,{x}'.format(s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb))) as src:
+        for i in range(nb):
+            src.append('  multbstage{nb} {s},{a},{n},{z},ad,md,x{i};'.format(
+                                                              nb=nb,
+                                                              s=arg_list('s',nb),
+                                                              a=arg_list('a',nb),
+                                                              n=arg_list('n',nb),
+                                                              z=arg_list('z',nb+1),
+                                                              i=i))
+            if 2*((A*2**i)%N)>=N:
+                src.append('  x md;')
+
+def tomodularinv(nb,A,N):
+    A_inv = modular_inverse(A,N)
+    mult_A = (A*2**nb)%N
+    with declare('toAmodularinv{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                '{a}'.format(a=arg_list('a',nb))) as src:
+        for i in range(nb):
+            mask=2**i
+            if ((A_inv & mask) ^ (mult_A & mask)):
+                src.append('  x a{};'.format(i))
+
+
+def backtoA(nb,A,N):
+    A_inv = modular_inverse(A,N)
+    mult_A_inv = (A_inv * 2**nb) % N
+    with declare('backtoA{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                '{a}'.format(a=arg_list('a',nb))) as src:
+        for i in range(nb):
+            mask=2**i
+            if ((mult_A_inv & mask) ^ (A & mask)):
+                src.append('  x a{};'.format(i))
+
+def modularmult(nb,A,N):
+    A_inv = modular_inverse(A,N)
+
+    specificmultbchain(nb,A_inv,N)
+    specificmultbchain(nb,A,N)
+
+    tomodularinv(nb,A,N)
+    backtoA(nb,A,N)
+
+    sub(nb)
+
+    with declare('modularmult{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                 '{s},{a},{n},{z},ad,md,{x}'.format(s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb))) as src:
+        src.append('  specificmultbchain{nb}_{A}_{N} {s},{a},{n},{z},ad,md,{x};'.format(nb=nb,
+                                                     A=A,
+                                                     N=N,
+                                                     s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb)))
+        src.append('  toAmodularinv{nb}_{A}_{N} {a};'.format(nb=nb,
+                                                            A=A,
+                                                            N=N,
+                                                            a=arg_list('a',nb)))
+        for i in range(nb):
+            src.append('  swap x{i},s{i};'.format(i=i))
+
+        src.append('  sub{nb} {n},{s},{z};'.format(nb=nb,
+                                                   n=arg_list('n',nb),
+                                                   s=arg_list('s',nb),
+                                                   z=arg_list('z',nb+1)))
+
+        src.append('  add{nb} {s},z{nb},{n};'.format(nb=nb,
+                                                      n=arg_list('n',nb),
+                                                      s=arg_list('s',nb)))
+
+        for i in range(nb):
+            src.append('  swap n{i},s{i};'.format(i=i))
+
+        src.append('  specificmultbchain{nb}_{A_inv}_{N} {s},{a},{n},{z},ad,md,{x};'.format(nb=nb,
+                                                     A_inv=A_inv,
+                                                     N=N,
+                                                     s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb)))
+        src.append('  backtoA{nb}_{A}_{N} {a};'.format(nb=nb,
+                                                       A=A,
+                                                       N=N,
+                                                       a=arg_list('a',nb)))
+
+
+def synth(nb,A,N):
     multbchain(nb)
+    modularmult(nb,A,N)
     qasm_code.append("""
     qreg b[{nb}];
     qreg a[{nb}];
@@ -558,8 +661,30 @@ def synth(nb):
                ))
     return '\n'.join(qasm_code)
 
+def modular_inverse(a,b):
+    s = 0
+    old_s = 1
+    t = 1
+    old_t = 1
+    r = b
+    old_r = a
+    while r!=0:
+        q = old_r//r
+        old_r,r = r,old_r-q*r
+        old_t,t = t,old_t-q*t
+        old_s,s = s,old_s-q*s
+    return old_s%b
+
+
 
 if __name__ == '__main__':
-    nb = int(sys.argv[1])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-nb',type=int,default=3,help='Number of bits in the registers')
+    parser.add_argument('-A',type=int,default=2,help='Base of exponentiation')
+    parser.add_argument('-N',type=int,default=3,help='All is mod N')
+    args = parser.parse_args()
+    nb = args.nb
+    A = args.A
+    N = args.N
     with open('circuit.qasm', 'w') as f:
-        f.write(synth(nb))
+        f.write(synth(nb,A,N))
