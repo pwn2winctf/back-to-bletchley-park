@@ -795,44 +795,85 @@ def synth(nb,A,N):
     modularmult(nb,A,N)
     cmodularmult(nb,A,N)
     modularexp(nb,A,N)
+
+    crd=[]
+    for i in range(nb):
+        crd.append("    creg cr{i}[1];".format(i=i))
+    crd ='\n'.join(crd)
+
+    flip_gates=[]
+    for i in range(nb):
+        mask = 2**i
+        if N & mask:
+            flip_gates.append("    x n[{i}];".format(i=i))
+    flip_gates.append("")
+
+    for i in range(nb):
+        mask = 2**i
+        if A & mask:
+            flip_gates.append("    x a[{i}];".format(i=i))
+    flip_gates.append("")
+    flip_gates = '\n'.join(flip_gates)
+
+    iqft=[]
+    for i in range(nb):
+        for j in range(i):
+            iqft.append("    if(cr{j}==1) u1(pi/{power}) yv[{i}];".format(j=j,i=i,power=2**(i-j)))
+        iqft.append("    h yv[{i}];".format(i=i))
+        iqft.append("    measure yv[{i}]->cr{i}[0];\n".format(i=i))
+    iqft.append("")
+    iqft = '\n'.join(iqft)
+
+
     qasm_code.append("""
-    qreg b[{nb}];
+    qreg su[{nb}];
     qreg a[{nb}];
     qreg n[{nb}];
     qreg scratch[{nb1}];
 
     // recicled
     qreg ancilla_adder[1];
+    qreg ancilla_mult[1];
 
-    // num is X in the article
-    qreg num[{nb}];
-
-    // one ancilla needed per bit in X
-    qreg trash[{nbm1}];
+    qreg num_init[{nb}];
+    qreg one[{nb}];
+    qreg yv[{nb}];
 
     creg c[{nb}];
+{crd}
 
-    x num[0];
-    x num[1];
+    // Always starts at 1
+    x num_init[0];
+    x one[0];
 
-    x a[1];
+{fg}
 
-    x n[0];
-    x n[1];
+    //prepare yv
+    h yv;
 
-    //multbstage{nb} {b},{a},{n},{s},ancilla_adder[0],trash[0],num[0];
-    multbchain{nb} {b},{a},{n},{s},ancilla_adder[0],{t},{x};
 
-    measure b -> c;
-    """.format(nb=nb,nb1=nb+1,
-               b=arg_vec('b',nb),
+    modularexp{nb}_{A}_{N} {su},{a},{n},{sc},ancilla_adder[0],ancilla_mult[0],{x},{o},{yv};
+
+
+    measure num_init -> c;
+
+    // compute inverse qft
+{iqft}
+
+
+    \n""".format(nb=nb,nb1=nb+1,A=A,N=N,
+               su=arg_vec('su',nb),
                a=arg_vec('a',nb),
                n=arg_vec('n',nb),
-               s=arg_vec('scratch',nb+1),
-               t=arg_vec('trash',nb-1),
-               x=arg_vec('num',nb-1),
-               nbm1=nb-1,
+               sc=arg_vec('scratch',nb+1),
+               x=arg_vec('num_init',nb),
+               o=arg_vec('one',nb),
+               yv=arg_vec('yv',nb),
+               fg=flip_gates,
+               iqft=iqft,
+               crd=crd
                ))
+
     return '\n'.join(qasm_code)
 
 def modular_inverse(a,b):

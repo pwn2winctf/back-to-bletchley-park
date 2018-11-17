@@ -400,7 +400,7 @@ class TestCModularMult(ut.TestCase):
 
 class TestModularExp(ut.TestCase):
     def test_all_vals(self):
-        for y in range(2**(NUM_BITS-1)-1):
+        for y in range(2**(NUM_BITS)-1):
             list_of_nums = [(0,NUM_BITS),
                             (CONST_A,NUM_BITS),
                             (CONST_N,NUM_BITS),

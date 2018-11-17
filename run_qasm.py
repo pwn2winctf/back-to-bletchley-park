@@ -16,7 +16,7 @@ backend = Aer.get_backend('qasm_simulator')
 # Job is async
 job = qi.execute(prog, backend, shots=1)
 
-#The block above is not necessary
+#The block below is not necessary
 #It is just way to make sure things are still running
 init_status = job.status()
 i=0
