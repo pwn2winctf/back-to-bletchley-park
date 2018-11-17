@@ -539,6 +539,31 @@ def specificmultbchain(nb,A,N):
             if 2*((A*2**i)%N)>=N:
                 src.append('  x md;')
 
+def cspecificmultbchain(nb,A,N):
+    multbstage(nb)
+    with declare('cspecificmultbchain{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                 '{s},{a},{n},{z},ad,md,{x},y'.format(s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb))) as src:
+        for i in range(nb):
+            src.append('  multbstage{nb} {s},{a},{n},{z},ad,md,x{i};'.format(
+                                                              nb=nb,
+                                                              s=arg_list('s',nb),
+                                                              a=arg_list('a',nb),
+                                                              n=arg_list('n',nb),
+                                                              z=arg_list('z',nb+1),
+                                                              i=i))
+            if 2*((A*2**i)%N)>=N:
+                src.append('  cx y,md;')
+
+            #if control is off, must reverse ancilla with A=1
+            if 2*((2**i)%N)>=N:
+                src.append('  x y;')
+                src.append('  cx y,md;')
+                src.append('  x y;')
+
 def tomodularinv(nb,A,N):
     A_inv = modular_inverse(A,N)
     mult_A = (A*2**nb)%N
@@ -549,6 +574,20 @@ def tomodularinv(nb,A,N):
             if ((A_inv & mask) ^ (mult_A & mask)):
                 src.append('  x a{};'.format(i))
 
+def ctomodularinv(nb,A,N):
+    A_inv = modular_inverse(A,N)
+    mult_A = (A*2**nb)%N
+    pow_2 = (2**nb)%N
+    with declare('ctoAmodularinv{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                '{a},y'.format(a=arg_list('a',nb))) as src:
+        for i in range(nb):
+            mask=2**i
+            if ((A_inv & mask) ^ (mult_A & mask)):
+                src.append('  cx y,a{};'.format(i))
+            if ((pow_2 & mask) ^ (1 & mask)):
+                src.append('  x y;'.format(i))
+                src.append('  cx y,a{};'.format(i))
+                src.append('  x y;'.format(i))
 
 def backtoA(nb,A,N):
     A_inv = modular_inverse(A,N)
@@ -559,6 +598,21 @@ def backtoA(nb,A,N):
             mask=2**i
             if ((mult_A_inv & mask) ^ (A & mask)):
                 src.append('  x a{};'.format(i))
+
+def cbacktoA(nb,A,N):
+    A_inv = modular_inverse(A,N)
+    mult_A_inv = (A_inv * 2**nb) % N
+    pow_2 = (2**nb) % N
+    with declare('cbacktoA{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                '{a},y'.format(a=arg_list('a',nb))) as src:
+        for i in range(nb):
+            mask=2**i
+            if ((mult_A_inv & mask) ^ (A & mask)):
+                src.append('  cx y,a{};'.format(i))
+            if ((pow_2 & mask) ^ (1 & mask)):
+                src.append('  x y;'.format(i))
+                src.append('  cx y,a{};'.format(i))
+                src.append('  x y;'.format(i))
 
 def modularmult(nb,A,N):
     A_inv = modular_inverse(A,N)
@@ -618,9 +672,82 @@ def modularmult(nb,A,N):
                                                        a=arg_list('a',nb)))
 
 
+
+def cmodularmult(nb,A,N):
+    A_inv = modular_inverse(A,N)
+
+    cspecificmultbchain(nb,A_inv,N)
+    cspecificmultbchain(nb,A,N)
+
+    ctomodularinv(nb,A,N)
+    cbacktoA(nb,A,N)
+
+    sub(nb)
+    with declare('cmodularmult{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                 '{s},{a},{n},{z},ad,md,{x},{o},y'.format(s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb),
+                                                     o=arg_list('o',nb))) as src:
+
+        #Fredkin gate
+        src.append('  x y;')
+        for i in range(nb):
+            src.append('  cswap y,o{i},a{i};'.format(i=i))
+        src.append('  x y;')
+
+        src.append('  cspecificmultbchain{nb}_{A}_{N} {s},{a},{n},{z},ad,md,{x},y;'.format(nb=nb,
+                                                     A=A,
+                                                     N=N,
+                                                     s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb)))
+        src.append('  ctoAmodularinv{nb}_{A}_{N} {a},y;'.format(nb=nb,
+                                                            A=A,
+                                                            N=N,
+                                                            a=arg_list('a',nb)))
+        for i in range(nb):
+            src.append('  swap x{i},s{i};'.format(i=i))
+
+        src.append('  sub{nb} {n},{s},{z};'.format(nb=nb,
+                                                   n=arg_list('n',nb),
+                                                   s=arg_list('s',nb),
+                                                   z=arg_list('z',nb+1)))
+
+        src.append('  add{nb} {s},z{nb},{n};'.format(nb=nb,
+                                                      n=arg_list('n',nb),
+                                                      s=arg_list('s',nb)))
+
+        for i in range(nb):
+            src.append('  swap n{i},s{i};'.format(i=i))
+
+        src.append('  cspecificmultbchain{nb}_{A_inv}_{N} {s},{a},{n},{z},ad,md,{x},y;'.format(nb=nb,
+                                                     A_inv=A_inv,
+                                                     N=N,
+                                                     s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb)))
+        src.append('  cbacktoA{nb}_{A}_{N} {a},y;'.format(nb=nb,
+                                                       A=A,
+                                                       N=N,
+                                                       a=arg_list('a',nb)))
+        #Fredkin gate
+        src.append('  x y;')
+        for i in range(nb):
+            src.append('  cswap y,o{i},a{i};'.format(i=i))
+        src.append('  x y;')
+
+
+
 def synth(nb,A,N):
     multbchain(nb)
     modularmult(nb,A,N)
+    cmodularmult(nb,A,N)
     qasm_code.append("""
     qreg b[{nb}];
     qreg a[{nb}];

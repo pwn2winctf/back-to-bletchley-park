@@ -360,8 +360,43 @@ class TestModularMult(ut.TestCase):
             self.assertEqual(CONST_N,conv[2])
             self.assertEqual(0,conv[3])
             self.assertEqual((CONST_A*x)%CONST_N,conv[4])
-            #self.assertEqual( CONST_A, conv[0])
 
+class TestCModularMult(ut.TestCase):
+    def test_all_vals_enabled(self):
+        A_inv = modular_inverse(CONST_A,CONST_N)
+        for x in range(1,2**(NUM_BITS-1)-1):
+            list_of_nums=[(0,NUM_BITS),(CONST_A,NUM_BITS),(CONST_N,NUM_BITS),(0,NUM_BITS+3),(x,NUM_BITS),(1,NUM_BITS),(1,1)]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = getattr(cc,"cmodularmult{nb}_{A}_{N}".format(
+                                    nb=NUM_BITS,
+                                    A=CONST_A,N=CONST_N)
+                                    )(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual(0,conv[0])
+            self.assertEqual(CONST_A,conv[1])
+            self.assertEqual(CONST_N,conv[2])
+            self.assertEqual(0,conv[3])
+            self.assertEqual((CONST_A*x)%CONST_N,conv[4])
+            self.assertEqual(1,conv[5])
+            self.assertEqual(1,conv[6])
+
+    def test_all_vals_disabled(self):
+        A_inv = modular_inverse(CONST_A,CONST_N)
+        for x in range(1,2**(NUM_BITS-1)-1):
+            list_of_nums=[(0,NUM_BITS),(CONST_A,NUM_BITS),(CONST_N,NUM_BITS),(0,NUM_BITS+3),(x,NUM_BITS),(1,NUM_BITS),(0,1)]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = getattr(cc,"cmodularmult{nb}_{A}_{N}".format(
+                                    nb=NUM_BITS,
+                                    A=CONST_A,N=CONST_N)
+                                    )(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual(0,conv[0])
+            self.assertEqual(CONST_A,conv[1])
+            self.assertEqual(CONST_N,conv[2])
+            self.assertEqual(0,conv[3])
+            self.assertEqual(x%CONST_N,conv[4])
+            self.assertEqual(1,conv[5])
+            self.assertEqual(0,conv[6])
 
 if __name__=='__main__':
     ut.main()

@@ -15,6 +15,10 @@ def ccx(a,b,c):
 def x_b(a):
     return 1-a
 
+def cswap(c,a,b):
+    if c:
+        return c,b,a
+    return c,a,b
 '''
 
 code = []
