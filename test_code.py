@@ -398,6 +398,28 @@ class TestCModularMult(ut.TestCase):
             self.assertEqual(1,conv[5])
             self.assertEqual(0,conv[6])
 
+class TestModularExp(ut.TestCase):
+    def test_all_vals(self):
+        for y in range(2**(NUM_BITS-1)-1):
+            list_of_nums = [(0,NUM_BITS),
+                            (CONST_A,NUM_BITS),
+                            (CONST_N,NUM_BITS),
+                            (0,NUM_BITS+3),
+                            (1,NUM_BITS),
+                            (1,NUM_BITS),
+                            (y,NUM_BITS)]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = getattr(cc,'modularexp{nb}_{A}_{N}'.format(nb=NUM_BITS, A=CONST_A, N=CONST_N))(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual(0,conv[0])
+            self.assertEqual((CONST_A**(2**NUM_BITS))%CONST_N,conv[1])
+            self.assertEqual(CONST_N,conv[2])
+            self.assertEqual(0,conv[3])
+            self.assertEqual((CONST_A**y)%CONST_N,conv[4])
+            self.assertEqual(1,conv[5])
+            self.assertEqual(y,conv[6])
+
+
 if __name__=='__main__':
     ut.main()
 

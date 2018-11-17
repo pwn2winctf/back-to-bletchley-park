@@ -672,6 +672,14 @@ def modularmult(nb,A,N):
                                                        a=arg_list('a',nb)))
 
 
+def squareA(nb,A,N):
+    with declare('squareA{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                 '{a}'.format(a=arg_list('a',nb))) as src:
+        A_sqr = (A*A)%N
+        for i in range(nb):
+            mask=2**i
+            if ((A_sqr & mask) ^ (A & mask)):
+                src.append('  x a{};'.format(i))
 
 def cmodularmult(nb,A,N):
     A_inv = modular_inverse(A,N)
@@ -742,12 +750,51 @@ def cmodularmult(nb,A,N):
             src.append('  cswap y,o{i},a{i};'.format(i=i))
         src.append('  x y;')
 
+def modularexp(nb,A,N):
+    '''
+    This expects the following initial parameters
+    s = 0
+    z = 0
+    ad = 0
+    md = 0
+    x = 1
+    o = 1
+    '''
+    with declare('modularexp{nb}_{A}_{N}'.format(nb=nb,A=A,N=N),
+                 '{s},{a},{n},{z},ad,md,{x},{o},{y}'.format(s=arg_list('s',nb),
+                                                     a=arg_list('a',nb),
+                                                     n=arg_list('n',nb),
+                                                     z=arg_list('z',nb+1),
+                                                     x=arg_list('x',nb),
+                                                     o=arg_list('o',nb),
+                                                     y=arg_list('y',nb))) as src:
+        for i in range(nb):
+            cmodularmult(nb,A,N)
+            src.append('  cmodularmult{nb}_{A}_{N} {s},{a},{n},{z},ad,md,{x},{o},y{i};'.format(
+                                                                             nb=nb,
+                                                                             A=A,
+                                                                             N=N,
+                                                                             s=arg_list('s',nb),
+                                                                             a=arg_list('a',nb),
+                                                                             n=arg_list('n',nb),
+                                                                             z=arg_list('z',nb+1),
+                                                                             x=arg_list('x',nb),
+                                                                             o=arg_list('o',nb),
+                                                                             i=i))
+            squareA(nb,A,N)
+            src.append(' squareA{nb}_{A}_{N} {a};'.format(nb=nb,
+                                                          A=A,
+                                                          N=N,
+                                                          a=arg_list('a',nb)))
+            A = (A*A)%N
+
 
 
 def synth(nb,A,N):
     multbchain(nb)
     modularmult(nb,A,N)
     cmodularmult(nb,A,N)
+    modularexp(nb,A,N)
     qasm_code.append("""
     qreg b[{nb}];
     qreg a[{nb}];
