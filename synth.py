@@ -29,13 +29,14 @@ class declare:
         ]
 
     def __enter__(self):
-        if self.name in gates_declared:
+        self.already_declared = self.name in gates_declared
+        if self.already_declared:
             return self.Bomb(self.AlreadyDeclared)
         gates_declared.add(self.name)
         return self.src
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type == self.AlreadyDeclared:
+        if self.already_declared or exc_type == self.AlreadyDeclared:
             return True
         self.src.append('}')
         qasm_code.extend(self.src)
@@ -441,7 +442,7 @@ def caddmod(nb):
                                                            b=arg_list('b',nb),
                                                            s=arg_list('s',
                                                                       nb+1)))
-        src.append('  ccmpg{nb} {b},{a},s{nb1},{s},x;'.format(nb=nb, 
+        src.append('  ccmpg{nb} {b},{a},s{nb1},{s},x;'.format(nb=nb,
                                                             nb1=nb+1,
                                                         s=arg_list('s',nb+1),
                                                         a=arg_list('a',nb),
@@ -500,7 +501,7 @@ def multbstage(nb):
 
 
 def multbchain(nb):
-    """ Chains basic modular multiplication stages """ 
+    """ Chains basic modular multiplication stages """
     multbstage(nb)
     with declare('multbchain{}'.format(nb),
                  '{s},{a},{n},{z},ad,{g},{x}'.format(s=arg_list('s',nb),
@@ -782,10 +783,10 @@ def modularexp(nb,A,N):
                                                                              o=arg_list('o',nb),
                                                                              i=i))
             squareA(nb,A,N)
-            src.append(' squareA{nb}_{A}_{N} {a};'.format(nb=nb,
-                                                          A=A,
-                                                          N=N,
-                                                          a=arg_list('a',nb)))
+            src.append('  squareA{nb}_{A}_{N} {a};'.format(nb=nb,
+                                                           A=A,
+                                                           N=N,
+                                                           a=arg_list('a',nb)))
             A = (A*A)%N
 
 
