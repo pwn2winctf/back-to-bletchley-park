@@ -940,6 +940,7 @@ def hide_gates_names(code,hide_names):
         if l.startswith('gate '):
             tok = l.split(' ')
             gates_names.append(tok[1])
+    gates_names.sort(key=len,reverse=True)
     for i,g in enumerate(gates_names):
         if hide_names:
             new_name = "sec_qgate_{}".format(i)
