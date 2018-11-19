@@ -24,6 +24,8 @@ def cswap(c,a,b):
 code = []
 indentation = '    '
 for line in f:
+    if line.startswith("//"):
+        code.extend([line.replace("//","#")])
     tok = line.strip().split(' ')
     if tok[0] == 'gate':
         _ = f.readline()
@@ -43,6 +45,6 @@ for line in f:
                 code.extend([indentation+'return ' + ret_vals +'\n'])
 
 with open('classical_code.py','w') as f:
-    code = base_code + '\n'.join(code)
+    code =  '\n'.join(code) + base_code
     f.write(code)
 

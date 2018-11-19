@@ -1,5 +1,6 @@
 import sys
 import argparse
+import numpy as np
 
 qasm_code = ["""
 include "qelib1.inc";
@@ -790,8 +791,138 @@ def modularexp(nb,A,N):
             A = (A*A)%N
 
 
+def obfuscate(nb,A_in,N):
+    obfuscate_step=[]
+    np.random.seed(41)
+    vars_dict={'a': 0, 'su':0, 'one': 0, 'num_init': 0}
 
-def synth(nb,A,N):
+    # don't mess with the highest bits. We want all to be < N
+    for i in range(nb-2):
+        if np.random.randint(0,2):
+            obfuscate_step.append("  x a[{}];".format(i))
+            vars_dict['a']=vars_dict['a'] ^ (2**i)
+
+        if np.random.randint(0,2):
+            obfuscate_step.append("  x su[{}];".format(i))
+            vars_dict['su']=vars_dict['su'] ^ (2**i)
+
+        if np.random.randint(0,2):
+            obfuscate_step.append("  x one[{}];".format(i))
+            vars_dict['one']=vars_dict['one'] ^ (2**i)
+
+        if np.random.randint(0,2):
+            obfuscate_step.append("  x num_init[{}];".format(i))
+            vars_dict['num_init']=vars_dict['num_init'] ^ (2**i)
+
+    print("After first random flips")
+    for k,v in vars_dict.items():
+        print(k,v)
+    print("")
+
+    r_vars = list(vars_dict.keys())
+    for i in range(10):
+        if np.random.randint(0,2):
+            np.random.shuffle(r_vars)
+            if vars_dict[r_vars[1]]!=0:
+                obfuscate_step.append('  x ancilla_mult[0];')
+                obfuscate_step.append(
+                        '  caddmod{nb} {v1},{v2},{n},{s},ancilla_adder[0],ancilla_mult[0];'.format(nb=nb,
+                                                                        v1=arg_vec(r_vars[0],nb),
+                                                                        v2=arg_vec(r_vars[1],nb),
+                                                                        n=arg_vec('n',nb),
+                                                                        s=arg_vec('scratch',nb+1),
+                                                                        ))
+                obfuscate_step.append('  x ancilla_mult[0];')
+                vars_dict[r_vars[0]] = (vars_dict[r_vars[0]] + vars_dict[r_vars[1]])%N
+                print(r_vars[0] + "=("+r_vars[0]+"+"+r_vars[1]+")%N="+str(vars_dict[r_vars[0]]))
+
+        if np.random.randint(0,2):
+            np.random.shuffle(r_vars)
+            obfuscate_step.append(
+                    '  doublemod{nb} {v1},{n},ancilla_mult[0],{s};'.format(nb=nb,
+                                                                       v1=arg_vec(r_vars[0],nb),
+                                                                       n=arg_vec('n',nb),
+                                                                       s=arg_vec('scratch',nb+1),
+                                                                       ))
+            if 2*vars_dict[r_vars[0]] >= N:
+                obfuscate_step.append('  x ancilla_mult[0];')
+            vars_dict[r_vars[0]] = (2*vars_dict[r_vars[0]])%N
+            print(r_vars[0] + "=(2*"+r_vars[0]+")%N="+str(vars_dict[r_vars[0]]))
+
+        if np.random.randint(0,2):
+            np.random.shuffle(r_vars)
+            obfuscate_step.append('  cmpge{nb} {v2},{v1},ancilla_adder[0],{s};'.format(nb=nb,
+                                                                v1=arg_vec(r_vars[0],nb),
+                                                                v2=arg_vec(r_vars[1],nb),
+                                                                s=arg_vec('scratch',nb+1)))
+            if vars_dict[r_vars[0]]>=vars_dict[r_vars[1]]:
+                obfuscate_step.append('  x ancilla_adder[0];')
+
+       # if np.random.randint(0,2):
+       #     np.random.shuffle(r_vars)
+       #     if vars_dict[r_vars[0]]!=0 and vars_dict[r_vars[1]]!=0:
+       #         modularmult(nb,vars_dict[r_vars[0]],N)
+       #         obfuscate_step.append('  modularmult{nb}_{A}_{N} {y},{v1},{n},{s},ancilla_adder[0],ancilla_mult[0],{v2};'.format(nb=nb,
+       #                                                             v1=arg_vec(r_vars[0],nb),
+       #                                                             A=vars_dict[r_vars[0]],
+       #                                                             v2=arg_vec(r_vars[1],nb),
+       #                                                             s=arg_vec('scratch',nb+1),
+       #                                                             y=arg_vec('y',nb),
+       #                                                             n=arg_vec('n',nb),
+       #                                                             N=N,
+       #                                                             ))
+       #         for k,v in vars_dict.items():
+       #             print(k,v)
+       #         print(r_vars[1]+"="+r_vars[1]+"*"+r_vars[0]+"%N={}".format((vars_dict[r_vars[0]]*vars_dict[r_vars[1]])%N))
+       #         vars_dict[r_vars[1]] = (vars_dict[r_vars[1]] * vars_dict[r_vars[0]])%N
+
+
+    print("\nAfter full scramble")
+    for k,v in vars_dict.items():
+        print(k,v)
+
+    for i in range(nb):
+        mask = 2**i
+        if (vars_dict['a'] & mask) ^ (A_in & mask):
+            obfuscate_step.append('  x a[{}];'.format(i))
+            vars_dict['a']=vars_dict['a'] ^ (2**i)
+
+        if (vars_dict['su'] & mask) ^ (0 & mask):
+            obfuscate_step.append('  x su[{}];'.format(i))
+            vars_dict['su']=vars_dict['su'] ^ (2**i)
+
+        if (vars_dict['one'] & mask) ^ (1 & mask):
+            obfuscate_step.append('  x one[{}];'.format(i))
+            vars_dict['one']=vars_dict['one'] ^ (2**i)
+
+        if (vars_dict['num_init'] & mask) ^ (1 & mask):
+            obfuscate_step.append('  x num_init[{}];'.format(i))
+            vars_dict['num_init']=vars_dict['num_init'] ^ (2**i)
+
+    print("\nFixed variables")
+    for k,v in vars_dict.items():
+        print(k,v)
+    print("")
+
+    print("Expected: a={} s=0 one=1 num_init=1".format(A_in))
+
+    obfuscate_code = '\n'.join(obfuscate_step)
+
+    with declare('obfuscate','{a},{s},{n},{o},{x},{y},{sc},ad,am'.format(a=arg_list('a',nb),
+                                                                         s=arg_list('su',nb),
+                                                                         n=arg_list('n',nb),
+                                                                         o=arg_list('o',nb),
+                                                                         x=arg_list('x',nb),
+                                                                         y=arg_list('y',nb),
+                                                                         sc=arg_list('sc',nb+1),
+                                                                         )) as src:
+
+        src.extend(obfuscate_code.replace('[','').replace(']','').replace('one','o').replace('scratch','sc').replace('num_init','x').replace('ancilla_adder0','ad').replace('ancilla_mult0','am').split('\n'))
+
+    return obfuscate_code
+
+
+def synth(nb,A,N,obfuscate_setup):
     multbchain(nb)
     modularmult(nb,A,N)
     cmodularmult(nb,A,N)
@@ -802,19 +933,24 @@ def synth(nb,A,N):
         crd.append("    creg cr{i}[1];".format(i=i))
     crd ='\n'.join(crd)
 
-    flip_gates=[]
-    for i in range(nb):
-        mask = 2**i
-        if N & mask:
-            flip_gates.append("    x n[{i}];".format(i=i))
-    flip_gates.append("")
+    if obfuscate_setup:
+        flip_gates = obfuscate(nb,A,N)
+    else:
+        flip_gates=['    // Always starts at 1',
+                    '    x num_init[0];',
+                    '    x one[0];']
+        for i in range(nb):
+            mask = 2**i
+            if N & mask:
+                flip_gates.append("    x n[{i}];".format(i=i))
+        flip_gates.append("")
 
-    for i in range(nb):
-        mask = 2**i
-        if A & mask:
-            flip_gates.append("    x a[{i}];".format(i=i))
-    flip_gates.append("")
-    flip_gates = '\n'.join(flip_gates)
+        for i in range(nb):
+            mask = 2**i
+            if A & mask:
+                flip_gates.append("    x a[{i}];".format(i=i))
+        flip_gates.append("")
+        flip_gates = '\n'.join(flip_gates)
 
     iqft=[]
     for i in range(nb):
@@ -843,9 +979,6 @@ def synth(nb,A,N):
     creg c[{nb}];
 {crd}
 
-    // Always starts at 1
-    x num_init[0];
-    x one[0];
 
 {fg}
 
@@ -898,9 +1031,15 @@ if __name__ == '__main__':
     parser.add_argument('-nb',type=int,default=3,help='Number of bits in the registers')
     parser.add_argument('-A',type=int,default=2,help='Base of exponentiation')
     parser.add_argument('-N',type=int,default=3,help='All is mod N')
+    parser.add_argument('--obfuscate_setup',default=False,const=True,action='store_const',help='Gates setup is scrambled')
+    parser.add_argument('--to_classical',default=False,const=True,action='store_const',help='Extra info to use in testing')
     args = parser.parse_args()
     nb = args.nb
     A = args.A
     N = args.N
+    obfuscate_setup = args.obfuscate_setup
+    to_classical = args.to_classical
+    if to_classical:
+        qasm_code = ["//{} {} {}".format(nb,A,N)]+qasm_code
     with open('circuit.qasm', 'w') as f:
-        f.write(synth(nb,A,N))
+        f.write(synth(nb,A,N,obfuscate_setup))

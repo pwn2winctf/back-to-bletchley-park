@@ -5,12 +5,15 @@ import numpy as np
 
 #Detect number of bits
 with open("classical_code.py") as f:
-    for a in f:
-        if a.startswith('def double'):
-            NUM_BITS = int(a.split('(')[0][-1])
-        if a.startswith('def specificmultbchain'):
-            aux = a.split('(')[0].split('_')
-            CONST_A,CONST_N = int(aux[1]),int(aux[2])
+    line = f.readline()
+    if line.startswith("#"):
+        line = line[1:]
+        tok = line.split(' ')
+        NUM_BITS = int(tok[0])
+        CONST_A = int(tok[1])
+        CONST_N = int(tok[2])
+    else:
+        print("Expected nb A N in the first line. Re-run synth with option --to_classical and parse the output again")
 
 def convert_to_bits(num,nbits):
     return [ (num//2**i) % 2 for i in range(nbits)]
@@ -463,7 +466,30 @@ class TestModularExp(ut.TestCase):
             self.assertEqual(1,conv[5])
             self.assertEqual(y,conv[6])
 
+class TestObfuscateSetup(ut.TestCase):
+    def test_init(self):
+        list_of_nums = [(0,NUM_BITS),
+                        (0,NUM_BITS),
+                        (CONST_N,NUM_BITS),
+                        (0,NUM_BITS),
+                        (0,NUM_BITS),
+                        (0,NUM_BITS),
+                        (0,NUM_BITS+3),
+                        ]
+        func_input = bits_from_nums(*list_of_nums)
+        func_output = getattr(cc,'obfuscate')(*func_input)
+        conv = nums_from_bits(func_output, list_of_nums)
+        #print("\n",func_output)
+        #print(conv)
+        self.assertEqual(CONST_A,conv[0])
+        self.assertEqual(0,conv[1])
+        self.assertEqual(CONST_N,conv[2])
+        self.assertEqual(1,conv[3])
+        self.assertEqual(1,conv[4])
+        self.assertEqual(0,conv[5])
+        self.assertEqual(0,conv[6])
 
 if __name__=='__main__':
+    print("nb={} A={} N={}".format(NUM_BITS,CONST_A,CONST_N))
     ut.main()
 
