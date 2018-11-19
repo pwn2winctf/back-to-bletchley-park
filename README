@@ -1,7 +1,14 @@
+To create qasm for the chall:
+
+python synth.py -nb [NUM_BITS] -A [Secret number] -N [Number to factor] --obfuscate_setup --hide_names
+
+Always use nb = ceil( log2(N) ) + 1 to assure obfuscation step doesn't break
+
+
 Run synth with parameters to generate circuit.qasm
 E.G.
 
-python synth.py -nb 5 -N 14 -A 9
+python synth.py -nb 5 -N 15 -A 9
 
 This creates a circuit capable of calculating A^y % N using quantum registers
 of nb qubits.

@@ -1,3 +1,4 @@
 *.qasm
 __pycache__
 classical_code.py
+gates_table.txt
