@@ -320,6 +320,50 @@ class TestSpecificMultBChain(ut.TestCase):
             self.assertEqual( 0, conv[3])
             self.assertEqual( val, conv[4])
 
+class TestCSpecificMultBChain(ut.TestCase):
+    def test_all_x_enabled(self):
+        for val in range(CONST_N):
+            list_of_nums = [(0,NUM_BITS),
+                            (CONST_A,NUM_BITS),
+                            (CONST_N,NUM_BITS),
+                            (0,NUM_BITS+3),
+                            (val,NUM_BITS),
+                            (1,1),
+                           ]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = getattr(cc,"cspecificmultbchain{nb}_{A}_{N}".format(
+                                    nb=NUM_BITS,
+                                    A=CONST_A,N=CONST_N)
+                                    )(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual( (CONST_A*val) % CONST_N,conv[0])
+            self.assertEqual( (CONST_A*2**NUM_BITS) % CONST_N,conv[1])
+            self.assertEqual( CONST_N, conv[2])
+            self.assertEqual( 0, conv[3])
+            self.assertEqual( val, conv[4])
+            self.assertEqual( 1, conv[5])
+    def test_all_x_disabled(self):
+        for val in range(CONST_N):
+            list_of_nums = [(0,NUM_BITS),
+                            (1,NUM_BITS),
+                            (CONST_N,NUM_BITS),
+                            (0,NUM_BITS+3),
+                            (val,NUM_BITS),
+                            (0,1),
+                           ]
+            func_input = bits_from_nums(*list_of_nums)
+            func_output = getattr(cc,"cspecificmultbchain{nb}_{A}_{N}".format(
+                                    nb=NUM_BITS,
+                                    A=CONST_A,N=CONST_N)
+                                    )(*func_input)
+            conv = nums_from_bits(func_output, list_of_nums)
+            self.assertEqual( (val) % CONST_N,conv[0])
+            self.assertEqual( (2**NUM_BITS) % CONST_N,conv[1])
+            self.assertEqual( CONST_N, conv[2])
+            self.assertEqual( 0, conv[3])
+            self.assertEqual( val, conv[4])
+            self.assertEqual( 0, conv[5])
+
 class TestToFromModularInverse(ut.TestCase):
     def test_to_modular_inverse(self):
         A_inv = modular_inverse(CONST_A,CONST_N)
@@ -347,7 +391,7 @@ class TestToFromModularInverse(ut.TestCase):
 class TestModularMult(ut.TestCase):
     def test_all_vals(self):
         A_inv = modular_inverse(CONST_A,CONST_N)
-        for x in range(1,2**(NUM_BITS-1)-1):
+        for x in range(1,CONST_N):
             list_of_nums=[(0,NUM_BITS),(CONST_A,NUM_BITS),(CONST_N,NUM_BITS),(0,NUM_BITS+3),(x,NUM_BITS)]
             func_input = bits_from_nums(*list_of_nums)
             func_output = getattr(cc,"modularmult{nb}_{A}_{N}".format(
@@ -364,7 +408,7 @@ class TestModularMult(ut.TestCase):
 class TestCModularMult(ut.TestCase):
     def test_all_vals_enabled(self):
         A_inv = modular_inverse(CONST_A,CONST_N)
-        for x in range(1,2**(NUM_BITS-1)-1):
+        for x in range(1,CONST_N):
             list_of_nums=[(0,NUM_BITS),(CONST_A,NUM_BITS),(CONST_N,NUM_BITS),(0,NUM_BITS+3),(x,NUM_BITS),(1,NUM_BITS),(1,1)]
             func_input = bits_from_nums(*list_of_nums)
             func_output = getattr(cc,"cmodularmult{nb}_{A}_{N}".format(
@@ -382,7 +426,7 @@ class TestCModularMult(ut.TestCase):
 
     def test_all_vals_disabled(self):
         A_inv = modular_inverse(CONST_A,CONST_N)
-        for x in range(1,2**(NUM_BITS-1)-1):
+        for x in range(1,CONST_N):
             list_of_nums=[(0,NUM_BITS),(CONST_A,NUM_BITS),(CONST_N,NUM_BITS),(0,NUM_BITS+3),(x,NUM_BITS),(1,NUM_BITS),(0,1)]
             func_input = bits_from_nums(*list_of_nums)
             func_output = getattr(cc,"cmodularmult{nb}_{A}_{N}".format(
